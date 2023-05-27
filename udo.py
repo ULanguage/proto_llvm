@@ -13,7 +13,6 @@ EXPD = 'example'
 BUILDD = 'build'
 
 BIN = os.path.join(BUILDD, 'kaleido')
-EBIN = os.path.join(BUILDD, 'main')
 
 def filesWithExtension(d, extension):
   return [ str(fpath) for fpath in list(Path(d).rglob(f'*{extension}')) ]
@@ -21,10 +20,7 @@ def filesWithExtension(d, extension):
 CSRC = filesWithExtension(SRCD, '.cpp')
 CHEADS = filesWithExtension(SRCD, '.h')
 
-EOBJ = os.path.join(BUILDD, 'output.o')
 ESCRIPT = os.path.join(EXPD, 'script.k')
-ESRC = filesWithExtension(EXPD, '.cpp')
-EHEADS = filesWithExtension(EXPD, '.h')
 
 def TaskKaleido():
   return {
@@ -38,25 +34,13 @@ def TaskKaleido():
     ],
   }
 
-def TaskCompExample():
-  return {
-    'name': 'compExample',
-    'deps': [TaskKaleido, ESCRIPT] + ESRC + EHEADS,
-    'outs': [EOBJ, EBIN],
-
-    'actions': [
-      f'{BIN} < {ESCRIPT}',
-      f'clang++ {" ".join(ESRC)} {EOBJ} -o {EBIN}',
-    ],
-  }
-
 def TaskExample():
   return {
     'name': 'example',
-    'deps': [TaskCompExample],
+    'deps': [TaskKaleido, ESCRIPT],
 
     'capture': 1,
     'actions': [
-      EBIN,
+      f'{BIN} < {ESCRIPT}',
     ],
   }
