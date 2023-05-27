@@ -1,3 +1,3 @@
-extern sin(x);
+extern putchard(x);
 
-sin(1);
+putchard(1);

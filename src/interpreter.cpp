@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
+#include "lib.hpp"
 
 void InitializeModuleAndPassManager() {
   // Open a new module.

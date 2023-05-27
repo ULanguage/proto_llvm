@@ -19,7 +19,14 @@ def filesWithExtension(d, extension):
   return [ str(fpath) for fpath in list(Path(d).rglob(f'*{extension}')) ]
 
 CSRC = filesWithExtension(SRCD, '.cpp')
+CHPPS = filesWithExtension(SRCD, '.hpp')
 CHEADS = filesWithExtension(SRCD, '.h')
+CFLAGS =  ' '.join([
+  '-g -O3',
+  '`llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native`',
+  f'-I{INCLUDED}',
+  '-rdynamic',
+])
 
 TSCRIPT = os.path.join(EXPD, 'test.k')
 ESCRIPT = os.path.join(EXPD, 'script.k')
@@ -40,12 +47,12 @@ def genTaskRun(name, script, *, skipRun = False):
 def TaskKaleido():
   return {
     'name': 'kaleido',
-    'deps': CSRC + CHEADS,
+    'deps': CSRC + CHEADS + CHPPS,
     'outs': [BUILDD, BIN],
 
     'actions': [
       f'mkdir -p {BUILDD}',
-      f'clang++ -g -O3 {" ".join(CSRC)} `llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native` -I{INCLUDED} -o {BIN}',
+      f'clang++ -o {BIN} {CFLAGS} {" ".join(CSRC)}',
     ],
   }
 
