@@ -21,7 +21,21 @@ def filesWithExtension(d, extension):
 CSRC = filesWithExtension(SRCD, '.cpp')
 CHEADS = filesWithExtension(SRCD, '.h')
 
+TSCRIPT = os.path.join(EXPD, 'test.k')
 ESCRIPT = os.path.join(EXPD, 'script.k')
+MSCRIPT = os.path.join(EXPD, 'mandel.k')
+
+def genTaskRun(name, script, *, skipRun = False):
+ return {
+    'name': name,
+    'deps': [TaskKaleido, script],
+    'skipRun': skipRun,
+
+    'capture': 1,
+    'actions': [
+      f'{BIN} < {script}',
+    ],
+  }
 
 def TaskKaleido():
   return {
@@ -31,17 +45,15 @@ def TaskKaleido():
 
     'actions': [
       f'mkdir -p {BUILDD}',
-      f'clang++ -g -O3 {" ".join(CSRC)} `llvm-config --cxxflags --ldflags --system-libs --libs all` -I{INCLUDED} -o {BIN}',
+      f'clang++ -g -O3 {" ".join(CSRC)} `llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native` -I{INCLUDED} -o {BIN}',
     ],
   }
+
+def TaskTest():
+  return genTaskRun('test', TSCRIPT)
 
 def TaskExample():
-  return {
-    'name': 'example',
-    'deps': [TaskKaleido, ESCRIPT],
+  return genTaskRun('example', ESCRIPT, skipRun = True)
 
-    'capture': 1,
-    'actions': [
-      f'{BIN} < {ESCRIPT}',
-    ],
-  }
+def TaskMandel():
+  return genTaskRun('mandel', MSCRIPT, skipRun = True)
