@@ -9,6 +9,7 @@ UDOConfig = {
 }
 
 SRCD = 'src'
+INCLUDED = os.path.join(SRCD, 'include')
 EXPD = 'example'
 BUILDD = 'build'
 
@@ -30,7 +31,7 @@ def TaskKaleido():
 
     'actions': [
       f'mkdir -p {BUILDD}',
-      f'clang++ -g -O3 {" ".join(CSRC)} `llvm-config --cxxflags --ldflags --system-libs --libs all` -o {BIN}',
+      f'clang++ -g -O3 {" ".join(CSRC)} `llvm-config --cxxflags --ldflags --system-libs --libs all` -I{INCLUDED} -o {BIN}',
     ],
   }
 
