@@ -21,7 +21,7 @@ def filesWithExtension(d, extension):
 CSRC = filesWithExtension(SRCD, '.cpp')
 CHPPS = filesWithExtension(SRCD, '.hpp')
 CHEADS = filesWithExtension(SRCD, '.h')
-CFLAGS =  ' '.join([
+CFLAGS = ' '.join([
   '-g -O3',
   '`llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native`',
   f'-I{INCLUDED}',
@@ -44,15 +44,30 @@ def genTaskRun(name, script, *, skipRun = False):
     ],
   }
 
+def genTaskCompile(fpath, opath):
+  return {
+    'name': fpath,
+    'deps': [fpath],
+    'outs': [opath],
+
+    'actions': [
+      f'mkdir -p {BUILDD}',
+      f'clang++ -c -o {opath} {CFLAGS} {fpath}',
+    ],
+  }
+
 def TaskKaleido():
+  objects = [os.path.join(BUILDD, os.path.basename(fpath) + '.o') for fpath in CSRC]
+
   return {
     'name': 'kaleido',
     'deps': CSRC + CHEADS + CHPPS,
     'outs': [BUILDD, BIN],
 
+    'subtasks': [genTaskCompile(*args) for args in zip(CSRC, objects)],
     'actions': [
-      f'mkdir -p {BUILDD}',
-      f'clang++ -o {BIN} {CFLAGS} {" ".join(CSRC)}',
+      f'clang++ -o {BIN} {CFLAGS} {" ".join(objects)}',
+      # TODO: Link
     ],
   }
 
