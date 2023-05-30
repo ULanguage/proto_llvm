@@ -1,6 +1,6 @@
 #pragma once
 
-//#include "utils.h"
+#include "utils.h"
 
 #ifdef _WIN32
 #define DLLEXPORT __declspec(dllexport)

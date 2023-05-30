@@ -30,6 +30,22 @@ Function *getFunction(std::string Name) {
   return nullptr;
 }
 
+Value* getVariable(std::string Name) {
+  // Look this variable up in the function.
+  AllocaInst *A = NamedValues[Name];
+  if (!A) {
+    GlobalVariable *Var = TheModule->getGlobalVariable(Name);
+    if (!Var)
+      return LogErrorV("Unknown variable name");
+
+    //return Builder->CreateLoad(Var->getValueType(), Var, Name.c_str());
+    return Var;
+  }
+
+  // Load the value.
+  return Builder->CreateLoad(A->getAllocatedType(), A, Name.c_str());
+}
+
 /// CreateEntryBlockAlloca - Create an alloca instruction in the entry block of
 /// the function.  This is used for mutable variables etc.
 AllocaInst *CreateEntryBlockAlloca(Function *TheFunction, StringRef VarName) {
@@ -43,13 +59,7 @@ Value *NumberExprAST::codegen() {
 }
 
 Value *VariableExprAST::codegen() {
-  // Look this variable up in the function.
-  AllocaInst *A = NamedValues[Name];
-  if (!A)
-    return LogErrorV("Unknown variable name");
-
-  // Load the value.
-  return Builder->CreateLoad(A->getAllocatedType(), A, Name.c_str());
+  return getVariable(Name);
 }
 
 Value *UnaryExprAST::codegen() {
@@ -80,7 +90,7 @@ Value *BinaryExprAST::codegen() {
       return nullptr;
 
     // Look up the name.
-    Value *Variable = NamedValues[LHSE->getName()];
+    Value *Variable = getVariable(LHSE->getName());
     if (!Variable)
       return LogErrorV("Unknown variable name");
 
@@ -336,6 +346,36 @@ Value *VarExprAST::codegen() {
 
   // Return the body computation.
   return BodyVal;
+}
+
+Value *GVarExprAST::codegen() {
+  Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+  // Register all variables and emit their initializer.
+  for (unsigned i = 0, e = VarNames.size(); i != e; ++i) {
+    const std::string &VarName = VarNames[i].first;
+    ExprAST *Init = VarNames[i].second.get();
+
+    // Emit the initializer before adding the variable to scope, this prevents
+    // the initializer from referencing the variable itself, and permits stuff
+    // like this:
+    //  var a = 1 in
+    //    var a = a in ...   # refers to outer 'a'.
+    Value *InitVal;
+    if (Init) {
+      InitVal = Init->codegen();
+      if (!InitVal)
+        return nullptr;
+    } else { // If not specified, use 0.0.
+      InitVal = ConstantFP::get(*TheContext, APFloat(0.0));
+    }
+
+    TheModule->getOrInsertGlobal(VarName, Type::getDoubleTy(*TheContext));
+    GlobalVariable *Var = TheModule->getGlobalVariable(VarName);
+    Var->setLinkage(GlobalVariable::ExternalLinkage);
+  }
+
+  return ConstantFP::get(*TheContext, APFloat(0.0));
 }
 
 Function *PrototypeAST::codegen() {

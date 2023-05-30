@@ -1,3 +1,4 @@
-extern putchard(x);
+extern printd(x);
 
-putchard(1);
+gvar y = 1;
+y = 3;

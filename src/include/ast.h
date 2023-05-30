@@ -110,6 +110,18 @@ public:
   Value *codegen() override;
 };
 
+/// GVarExprAST - Expression class for gvar
+class GVarExprAST : public ExprAST {
+  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
+
+public:
+  GVarExprAST(std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames)
+    : VarNames(std::move(VarNames)) {}
+
+  Value *codegen() override;
+};
+
+
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes), as well as if it is an operator.

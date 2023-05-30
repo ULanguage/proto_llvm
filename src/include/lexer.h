@@ -27,7 +27,8 @@ enum Token {
   tok_unary = -12,
 
   // var definition
-  tok_var = -13
+  tok_var = -13,
+  tok_gvar = -14,
 };
 
 extern std::string IdentifierStr; // Filled in if tok_identifier

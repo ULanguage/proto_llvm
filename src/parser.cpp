@@ -217,6 +217,45 @@ std::unique_ptr<ExprAST> ParseVarExpr() {
   return std::make_unique<VarExprAST>(std::move(VarNames), std::move(Body));
 }
 
+/// gvarexpr ::= 'gvar' identifier ('=' expression)?
+//                  (',' identifier ('=' expression)?)*
+std::unique_ptr<ExprAST> ParseGVarExpr() {
+  getNextToken(); // eat the gvar.
+
+  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
+
+  // At least one variable name is required.
+  if (CurTok != tok_identifier)
+    return LogError("expected identifier after var");
+
+  while (true) {
+    std::string Name = IdentifierStr;
+    getNextToken(); // eat identifier.
+
+    // Read the optional initializer.
+    std::unique_ptr<ExprAST> Init = nullptr;
+    if (CurTok == '=') {
+      getNextToken(); // eat the '='.
+
+      Init = ParseExpression();
+      if (!Init)
+        return nullptr;
+    }
+
+    VarNames.push_back(std::make_pair(Name, std::move(Init)));
+
+    // End of var list, exit loop.
+    if (CurTok != ',')
+      break;
+    getNextToken(); // eat the ','.
+
+    if (CurTok != tok_identifier)
+      return LogError("expected identifier list after var");
+  }
+
+  return std::make_unique<GVarExprAST>(std::move(VarNames));
+}
+
 /// primary
 ///   ::= identifierexpr
 ///   ::= numberexpr
@@ -240,6 +279,8 @@ std::unique_ptr<ExprAST> ParsePrimary() {
     return ParseForExpr();
   case tok_var:
     return ParseVarExpr();
+  case tok_gvar:
+    return ParseGVarExpr();
   }
 }
 

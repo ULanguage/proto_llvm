@@ -36,6 +36,8 @@ int gettok() {
       return tok_unary;
     if (IdentifierStr == "var")
       return tok_var;
+    if (IdentifierStr == "gvar")
+      return tok_gvar;
     return tok_identifier;
   }
 

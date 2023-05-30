@@ -44,6 +44,9 @@ std::unique_ptr<ExprAST> ParseForExpr();
 //                    (',' identifier ('=' expression)?)* 'in' expression
 std::unique_ptr<ExprAST> ParseVarExpr();
 
+/// gvarexpr ::= 'gvar' identifier ('=' expression)? (',' identifier ('=' expression)?)*
+std::unique_ptr<ExprAST> ParseGVarExpr();
+
 /// primary
 ///   ::= identifierexpr
 ///   ::= numberexpr
