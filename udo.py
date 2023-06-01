@@ -28,7 +28,7 @@ CFLAGS = ' '.join([
   '-rdynamic',
 ])
 
-TSCRIPT = os.path.join(EXPD, 'test.k')
+TSCRIPT = os.path.join(EXPD, 'test_jit.k')
 ESCRIPT = os.path.join(EXPD, 'script.k')
 MSCRIPT = os.path.join(EXPD, 'mandel.k')
 
