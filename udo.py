@@ -4,6 +4,47 @@
 import os
 from pathlib import Path
 
+def filesWithExtension(d, extension):
+  return [ str(fpath) for fpath in list(Path(d).rglob(f'*{extension}')) ]
+
+def genTaskCCompile(fpath, opath):
+  return {
+    'name': fpath,
+    'deps': [fpath],
+    'outs': [opath],
+
+    'actions': [
+      f'mkdir -p {BUILDD}',
+      f'clang++ -c -o {opath} {CFLAGS} {fpath}',
+    ],
+  }
+
+def genTaskRun(name, script, *, skipRun = False):
+ return {
+    'name': name,
+    'deps': [TaskKaleido, script],
+    'skipRun': skipRun,
+
+    'capture': 1,
+    'actions': [
+      f'{BIN} jit < {script}',
+    ],
+  }
+
+def genTaskKCompile(fpath, opath):
+  return {
+    'name': fpath,
+    'deps': [fpath],
+    'outs': [opath],
+
+    'actions': [
+      f'{BIN} comp {opath} < {fpath}',
+    ],
+  }
+
+#############################################################
+# S: Config #################################################
+
 UDOConfig = {
   'version': (1, 3, 0)
 }
@@ -14,9 +55,6 @@ EXPD = 'example'
 BUILDD = 'build'
 
 BIN = os.path.join(BUILDD, 'kaleido')
-
-def filesWithExtension(d, extension):
-  return [ str(fpath) for fpath in list(Path(d).rglob(f'*{extension}')) ]
 
 CSRC = filesWithExtension(SRCD, '.cpp')
 CHPPS = filesWithExtension(SRCD, '.hpp')
@@ -32,29 +70,8 @@ TSCRIPT = os.path.join(EXPD, 'test_jit.k')
 ESCRIPT = os.path.join(EXPD, 'script.k')
 MSCRIPT = os.path.join(EXPD, 'mandel.k')
 
-def genTaskRun(name, script, *, skipRun = False):
- return {
-    'name': name,
-    'deps': [TaskKaleido, script],
-    'skipRun': skipRun,
-
-    'capture': 1,
-    'actions': [
-      f'{BIN} < {script}',
-    ],
-  }
-
-def genTaskCompile(fpath, opath):
-  return {
-    'name': fpath,
-    'deps': [fpath],
-    'outs': [opath],
-
-    'actions': [
-      f'mkdir -p {BUILDD}',
-      f'clang++ -c -o {opath} {CFLAGS} {fpath}',
-    ],
-  }
+#############################################################
+# S: Tasks ##################################################
 
 def TaskKaleido():
   objects = [os.path.join(BUILDD, os.path.basename(fpath) + '.o') for fpath in CSRC]
@@ -64,15 +81,34 @@ def TaskKaleido():
     'deps': CSRC + CHEADS + CHPPS,
     'outs': [BUILDD, BIN],
 
-    'subtasks': [genTaskCompile(*args) for args in zip(CSRC, objects)],
+    'subtasks': [genTaskCCompile(*args) for args in zip(CSRC, objects)],
     'actions': [
       f'clang++ -o {BIN} {CFLAGS} {" ".join(objects)}',
-      # TODO: Link
+    ],
+  }
+
+def taskTestComp():
+  return {
+    'name': 'testComp',
+    'deps': ['./example/main.cc'],
+    'outs': ['./build/main'],
+    
+    'capture': 1,
+    # 'subtasks': [genTaskKCompile('./example/test_comp.k', './build/output.o')],
+    'actions': [
+      f'{BIN} comp ./build/output.o < ./example/test_comp.k', # TODO: Parametize
+      f'clang++ -o ./build/main ./build/output.o ./example/main.cc',
+      f'./build/main',
     ],
   }
 
 def TaskTest():
-  return genTaskRun('test', TSCRIPT)
+  return {
+    'name': 'test',
+    'deps': [TaskKaleido],
+
+    'subtasks': [genTaskRun('test_jit', TSCRIPT), taskTestComp]
+  }
 
 def TaskExample():
   return genTaskRun('example', ESCRIPT, skipRun = True)

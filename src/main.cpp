@@ -4,7 +4,9 @@
 #include "interpreter.h"
 #include "utils.h"
 
-int main() {
+CompMode_t CompMode;
+
+void sharedSetup() {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
   InitializeNativeTargetAsmParser();
@@ -20,17 +22,38 @@ int main() {
   // Prime the first token.
   fprintf(stderr, "ready> ");
   getNextToken();
+}
 
-#ifdef KALEIDO_JIT
-  TheJIT = ExitOnErr(KaleidoscopeJIT::Create());
-#endif
-
+void startMainLoop() {
   InitializeModuleAndPassManager();
 
   // Run the main "interpreter loop" now.
   MainLoop();
+}
 
-#ifndef KALEIDO_JIT
+int mainJIT(int argc, char* argv[]) {
+  CompMode = JIT;
+
+  sharedSetup();
+  TheJIT = ExitOnErr(KaleidoscopeJIT::Create());
+  startMainLoop();
+
+  return 0;
+}
+
+int mainComp(int argc, char* argv[]) {
+  CompMode = COMP;
+
+  if (argc < 3) {
+    fprintf(stderr, "Usage: kaleido comp {OPATH}");
+    return 0;
+  }
+
+  auto opath = std::string(argv[2]);
+
+  sharedSetup();
+  startMainLoop();
+
   InitializeAllTargetInfos();
   InitializeAllTargets();
   InitializeAllTargetMCs();
@@ -61,9 +84,8 @@ int main() {
 
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
 
-  auto Filename = "build/output.o"; // TODO: Param
   std::error_code EC;
-  raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+  raw_fd_ostream dest(opath.c_str(), EC, sys::fs::OF_None);
 
   if (EC) {
     errs() << "Could not open file: " << EC.message();
@@ -81,8 +103,24 @@ int main() {
   pass.run(*TheModule);
   dest.flush();
 
-  outs() << "Wrote " << Filename << "\n";
-#endif
+  outs() << "Wrote " << opath << "\n";
 
   return 0;
+}
+
+int main(int argc, char* argv[]) {
+  if (argc < 2) {
+    fprintf(stderr, "Usage: kaleido [jit|comp]");
+    return 0;
+  }
+
+  auto mode = std::string(argv[1]);
+  if (mode == "jit")
+    return mainJIT(argc, argv);
+  else if (mode == "comp")
+    return mainComp(argc, argv);
+  else {
+    fprintf(stderr, "Usage: kaleido [jit|comp]");
+    return 1;
+  }
 }

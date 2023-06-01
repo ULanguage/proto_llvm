@@ -41,3 +41,8 @@
 using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::orc;
+
+enum CompMode_t {
+  JIT, COMP
+};
+extern CompMode_t CompMode;

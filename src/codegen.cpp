@@ -6,9 +6,7 @@ std::unique_ptr<Module> TheModule;
 std::unique_ptr<IRBuilder<>> Builder;
 std::map<std::string, AllocaInst *> NamedValues;
 std::unique_ptr<legacy::FunctionPassManager> TheFPM;
-#ifdef KALEIDO_JIT
-std::unique_ptr<KaleidoscopeJIT> TheJIT;
-#endif
+std::unique_ptr<KaleidoscopeJIT> TheJIT; // NOTE: Only used if CompMode == JIT
 std::map<std::string, std::unique_ptr<PrototypeAST>> FunctionProtos;
 ExitOnError ExitOnErr;
 

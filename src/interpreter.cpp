@@ -9,9 +9,9 @@ void InitializeModuleAndPassManager() {
   // Open a new module.
   TheContext = std::make_unique<LLVMContext>();
   TheModule = std::make_unique<Module>("my cool jit", *TheContext);
-#ifdef KALEIDO_JIT
-  TheModule->setDataLayout(TheJIT->getDataLayout());
-#endif
+
+  if (CompMode == JIT)
+    TheModule->setDataLayout(TheJIT->getDataLayout());
 
   // Create a new builder for the module.
   Builder = std::make_unique<IRBuilder<>>(*TheContext);
@@ -39,11 +39,12 @@ void HandleDefinition() {
       fprintf(stderr, "Read function definition:");
       FnIR->print(errs());
       fprintf(stderr, "\n");
-#ifdef KALEIDO_JIT
-      ExitOnErr(TheJIT->addModule(
-          ThreadSafeModule(std::move(TheModule), std::move(TheContext))));
-      InitializeModuleAndPassManager();
-#endif
+
+      if (CompMode == JIT) {
+        ExitOnErr(TheJIT->addModule(
+            ThreadSafeModule(std::move(TheModule), std::move(TheContext))));
+        InitializeModuleAndPassManager();
+      }
     }
   } else {
     // Skip token for error recovery.
@@ -68,8 +69,8 @@ void HandleExtern() {
 void HandleTopLevelExpression() {
   // Evaluate a top-level expression into an anonymous function.
   if (auto FnAST = ParseTopLevelExpr()) {
-#ifdef KALEIDO_JIT
-    if (FnAST->codegen()) {
+    auto success = FnAST->codegen();
+    if (CompMode == JIT && success) {
       // Create a ResourceTracker to track JIT'd memory allocated to our
       // anonymous expression -- that way we can free it after executing.
       auto RT = TheJIT->getMainJITDylib().createResourceTracker();
@@ -89,9 +90,6 @@ void HandleTopLevelExpression() {
       // Delete the anonymous expression module from the JIT.
       ExitOnErr(RT->remove());
     }
-#else
-    FnAST->codegen();
-#endif
   } else {
     // Skip token for error recovery.
     getNextToken();
