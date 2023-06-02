@@ -22,12 +22,14 @@ public:
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
+  Type *Type; // TODO: unique_ptr
   std::string Name;
 
 public:
-  VariableExprAST(const std::string &Name) : Name(Name) {}
+  VariableExprAST(class Type *Type, const std::string &Name) : Type(Type), Name(Name) {}
 
   Value *codegen() override;
+  class Type* getType() const { return Type; }
   const std::string &getName() const { return Name; }
 };
 
@@ -98,14 +100,14 @@ public:
 
 /// VarExprAST - Expression class for var/in
 class VarExprAST : public ExprAST {
-  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames; // TODO: Types
+  std::vector<std::pair<std::unique_ptr<VariableExprAST>, std::unique_ptr<ExprAST>>> Vars;
   std::unique_ptr<ExprAST> Body;
 
 public:
   VarExprAST(
-      std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames,
+      std::vector<std::pair<std::unique_ptr<VariableExprAST>, std::unique_ptr<ExprAST>>> Vars,
       std::unique_ptr<ExprAST> Body)
-      : VarNames(std::move(VarNames)), Body(std::move(Body)) {}
+      : Vars(std::move(Vars)), Body(std::move(Body)) {}
 
   Value *codegen() override;
 };
@@ -115,12 +117,12 @@ public:
 /// of arguments the function takes), as well as if it is an operator.
 class PrototypeAST {
   std::string Name;
-  std::vector<std::pair<Type*, std::string>> Params;
+  std::vector<std::unique_ptr<VariableExprAST>> Params;
   bool IsOperator;
   unsigned Precedence; // Precedence if a binary op.
 
 public:
-  PrototypeAST(const std::string &Name, std::vector<std::pair<Type*, std::string>> Params,
+  PrototypeAST(const std::string &Name, std::vector<std::unique_ptr<VariableExprAST>> Params,
                bool IsOperator = false, unsigned Prec = 0)
       : Name(Name), Params(std::move(Params)), IsOperator(IsOperator),
         Precedence(Prec) {}

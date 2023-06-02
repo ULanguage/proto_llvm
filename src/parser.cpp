@@ -67,7 +67,7 @@ std::unique_ptr<ExprAST> ParseIdentifierExpr() {
   getNextToken(); // eat identifier.
 
   if (CurTok != '(') // Simple variable ref.
-    return std::make_unique<VariableExprAST>(IdName);
+    return std::make_unique<VariableExprAST>(Type::getDoubleTy(*TheContext), IdName);
 
   // Call.
   getNextToken(); // eat (
@@ -175,13 +175,24 @@ std::unique_ptr<ExprAST> ParseForExpr() {
 std::unique_ptr<ExprAST> ParseVarExpr() {
   getNextToken(); // eat the var.
 
-  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
+  std::vector<std::pair<std::unique_ptr<VariableExprAST>, std::unique_ptr<ExprAST>>> Vars;
 
   // At least one variable name is required.
   if (CurTok != tok_identifier)
     return LogError("expected identifier after var");
 
   while (true) {
+    // TODO: Repeated code with prototype
+    Type *type;
+    if (IdentifierStr == "double")
+      type = Type::getDoubleTy(*TheContext);
+    else
+     return LogError("Unknown type in var");
+
+    getNextToken(); // eat typeId.
+    if (CurTok != tok_identifier)
+      return LogError("Expected type and name in var");
+
     std::string Name = IdentifierStr;
     getNextToken(); // eat identifier.
 
@@ -195,7 +206,7 @@ std::unique_ptr<ExprAST> ParseVarExpr() {
         return nullptr;
     }
 
-    VarNames.push_back(std::make_pair(Name, std::move(Init)));
+    Vars.push_back(std::make_pair(std::make_unique<VariableExprAST>(type, Name), std::move(Init)));
 
     // End of var list, exit loop.
     if (CurTok != ',')
@@ -215,7 +226,7 @@ std::unique_ptr<ExprAST> ParseVarExpr() {
   if (!Body)
     return nullptr;
 
-  return std::make_unique<VarExprAST>(std::move(VarNames), std::move(Body));
+  return std::make_unique<VarExprAST>(std::move(Vars), std::move(Body));
 }
 
 /// primary
@@ -357,17 +368,18 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
   if (CurTok != '(')
     return LogErrorP("Expected '(' in prototype");
 
-  std::vector<std::pair<Type*, std::string>> Params;
+  std::vector<std::unique_ptr<VariableExprAST>> Params;
   while (getNextToken() == tok_identifier) {
-    auto typeStr = IdentifierStr;
+    Type *type;
+    if (IdentifierStr == "double") // TODO: Make it easier to add new types
+      type = Type::getDoubleTy(*TheContext);
+    else
+      return LogErrorP("Unknown type in prototye");
+
     if (getNextToken() != tok_identifier)
       return LogErrorP("Expected type and name in prototye");
 
-    auto name = IdentifierStr;
-    if (typeStr == "double") // TODO: Make it easier to add new types
-      Params.push_back(std::make_pair(Type::getDoubleTy(*TheContext), name));
-    else
-      return LogErrorP("Unknown type in prototye");
+    Params.push_back(std::make_unique<VariableExprAST>(type, IdentifierStr));
   }
   if (CurTok != ')')
     return LogErrorP("Expected ')' in prototype");
@@ -379,7 +391,7 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
   if (Kind && Params.size() != Kind)
     return LogErrorP("Invalid number of operands for operator");
 
-  return std::make_unique<PrototypeAST>(FnName, Params, Kind != 0,
+  return std::make_unique<PrototypeAST>(FnName, std::move(Params), Kind != 0,
                                          BinaryPrecedence);
 }
 
@@ -400,7 +412,7 @@ std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
   if (auto E = ParseExpression()) {
     // Make an anonymous proto.
     auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
-                                                 std::vector<std::pair<Type*, std::string>>());
+                                                 std::vector<std::unique_ptr<VariableExprAST>>());
     return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   }
   return nullptr;

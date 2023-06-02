@@ -296,9 +296,9 @@ Value *VarExprAST::codegen() {
   Function *TheFunction = Builder->GetInsertBlock()->getParent();
 
   // Register all variables and emit their initializer.
-  for (unsigned i = 0, e = VarNames.size(); i != e; ++i) {
-    const std::string &VarName = VarNames[i].first;
-    ExprAST *Init = VarNames[i].second.get();
+  for (unsigned i = 0, e = Vars.size(); i != e; ++i) {
+    const std::string &VarName = Vars[i].first->getName();
+    ExprAST *Init = Vars[i].second.get();
 
     // Emit the initializer before adding the variable to scope, this prevents
     // the initializer from referencing the variable itself, and permits stuff
@@ -331,8 +331,8 @@ Value *VarExprAST::codegen() {
     return nullptr;
 
   // Pop all our variables from scope.
-  for (unsigned i = 0, e = VarNames.size(); i != e; ++i)
-    NamedValues[VarNames[i].first] = OldBindings[i];
+  for (unsigned i = 0, e = Vars.size(); i != e; ++i)
+    NamedValues[Vars[i].first->getName()] = OldBindings[i];
 
   // Return the body computation.
   return BodyVal;
@@ -341,8 +341,8 @@ Value *VarExprAST::codegen() {
 Function *PrototypeAST::codegen() {
   // Make the function type:  double(double,double) etc.
   std::vector<Type *> Types;
-  for (auto [type, _] : Params)
-    Types.push_back(type);
+  for (auto &param : Params)
+    Types.push_back(param->getType());
 
   FunctionType *FT =
       FunctionType::get(Type::getDoubleTy(*TheContext), Types, false); // TODO: Result type
@@ -353,7 +353,7 @@ Function *PrototypeAST::codegen() {
   // Set names for all arguments.
   unsigned Idx = 0;
   for (auto &Arg : F->args())
-    Arg.setName(Params[Idx++].second);
+    Arg.setName(Params[Idx++]->getName());
 
   return F;
 }
