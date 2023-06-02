@@ -170,14 +170,17 @@ std::unique_ptr<ExprAST> ParseForExpr() {
                                        std::move(Step), std::move(Body));
 }
 
-std::unique_ptr<VariableExprAST> ParseVariableDefinition() {
-  Type *type;
+Type* ParseType() {
   if (IdentifierStr == "double")
-    type = Type::getDoubleTy(*TheContext);
+    return Type::getDoubleTy(*TheContext);
   else
    return nullptr;
+}
 
-  getNextToken(); // eat typeId.
+std::unique_ptr<VariableExprAST> ParseVariableDefinition() {
+  auto type = ParseType();
+  getNextToken(); // eat type.
+
   if (CurTok != tok_identifier)
     return nullptr;
 
@@ -390,12 +393,14 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
   // success.
   getNextToken(); // eat ')'.
 
+  auto type = ParseType();
+  getNextToken(); // eat type.
+
   // Verify right number of names for operator.
   if (Kind && Params.size() != Kind)
     return LogErrorP("Invalid number of operands for operator");
 
-  return std::make_unique<PrototypeAST>(FnName, std::move(Params), Kind != 0,
-                                         BinaryPrecedence);
+  return std::make_unique<PrototypeAST>(FnName, std::move(Params), std::move(type), Kind != 0, BinaryPrecedence);
 }
 
 /// definition ::= 'def' prototype expression
@@ -414,8 +419,7 @@ std::unique_ptr<FunctionAST> ParseDefinition() {
 std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
   if (auto E = ParseExpression()) {
     // Make an anonymous proto.
-    auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
-                                                 std::vector<std::unique_ptr<VariableExprAST>>());
+    auto Proto = std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::unique_ptr<VariableExprAST>>(), Type::getDoubleTy(*TheContext)); // TODO: void type?
     return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   }
   return nullptr;

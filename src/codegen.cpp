@@ -340,12 +340,13 @@ Value *VarExprAST::codegen() {
 
 Function *PrototypeAST::codegen() {
   // Make the function type:  double(double,double) etc.
-  std::vector<Type *> Types;
-  for (auto &param : Params)
+  std::vector<class Type*> Types;
+  for (auto &param : Params) {
     Types.push_back(param->getType());
+  }
 
   FunctionType *FT =
-      FunctionType::get(Type::getDoubleTy(*TheContext), Types, false); // TODO: Result type
+      FunctionType::get(RetType, Types, false);
 
   Function *F =
       Function::Create(FT, Function::ExternalLinkage, Name, TheModule.get());

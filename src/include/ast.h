@@ -117,18 +117,20 @@ public:
 /// of arguments the function takes), as well as if it is an operator.
 class PrototypeAST {
   std::string Name;
+  Type *RetType;
   std::vector<std::unique_ptr<VariableExprAST>> Params;
   bool IsOperator;
   unsigned Precedence; // Precedence if a binary op.
 
 public:
-  PrototypeAST(const std::string &Name, std::vector<std::unique_ptr<VariableExprAST>> Params,
+  PrototypeAST(const std::string &Name, std::vector<std::unique_ptr<VariableExprAST>> Params, Type *RetType,
                bool IsOperator = false, unsigned Prec = 0)
-      : Name(Name), Params(std::move(Params)), IsOperator(IsOperator),
+      : Name(Name), Params(std::move(Params)), RetType(std::move(RetType)), IsOperator(IsOperator),
         Precedence(Prec) {}
 
   Function *codegen();
   const std::string &getName() const { return Name; }
+  Type* getType() const { return RetType; }
 
   bool isUnaryOp() const { return IsOperator && Params.size() == 1; }
   bool isBinaryOp() const { return IsOperator && Params.size() == 2; }

@@ -1,3 +1,3 @@
-extern putchard(double x);
+extern putchard(double x) double;
 
 putchard(1);
