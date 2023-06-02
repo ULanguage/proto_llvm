@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "lexer.h"
+#include "codegen.h"
 #include "utils.h"
 
 /// CurTok/getNextToken - Provide a simple token buffer.  CurTok is the current
@@ -308,9 +309,9 @@ std::unique_ptr<ExprAST> ParseExpression() {
 }
 
 /// prototype
-///   ::= id '(' id* ')'
-///   ::= binary LETTER number? (id, id)
-///   ::= unary LETTER (id)
+///   ::= id '(' typeId id* ')'
+///   ::= binary LETTER number? (typeId id, typeId id)
+///   ::= unary LETTER (typeId id)
 std::unique_ptr<PrototypeAST> ParsePrototype() {
   std::string FnName;
 
@@ -356,9 +357,18 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
   if (CurTok != '(')
     return LogErrorP("Expected '(' in prototype");
 
-  std::vector<std::string> ArgNames;
-  while (getNextToken() == tok_identifier)
-    ArgNames.push_back(IdentifierStr);
+  std::vector<std::pair<Type*, std::string>> Params;
+  while (getNextToken() == tok_identifier) {
+    auto typeStr = IdentifierStr;
+    if (getNextToken() != tok_identifier)
+      return LogErrorP("Expected type and name in prototye");
+
+    auto name = IdentifierStr;
+    if (typeStr == "double") // TODO: Make it easier to add new types
+      Params.push_back(std::make_pair(Type::getDoubleTy(*TheContext), name));
+    else
+      return LogErrorP("Unknown type in prototye");
+  }
   if (CurTok != ')')
     return LogErrorP("Expected ')' in prototype");
 
@@ -366,10 +376,10 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
   getNextToken(); // eat ')'.
 
   // Verify right number of names for operator.
-  if (Kind && ArgNames.size() != Kind)
+  if (Kind && Params.size() != Kind)
     return LogErrorP("Invalid number of operands for operator");
 
-  return std::make_unique<PrototypeAST>(FnName, ArgNames, Kind != 0,
+  return std::make_unique<PrototypeAST>(FnName, Params, Kind != 0,
                                          BinaryPrecedence);
 }
 
@@ -390,7 +400,7 @@ std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
   if (auto E = ParseExpression()) {
     // Make an anonymous proto.
     auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
-                                                 std::vector<std::string>());
+                                                 std::vector<std::pair<Type*, std::string>>());
     return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
   }
   return nullptr;

@@ -98,7 +98,7 @@ public:
 
 /// VarExprAST - Expression class for var/in
 class VarExprAST : public ExprAST {
-  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
+  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames; // TODO: Types
   std::unique_ptr<ExprAST> Body;
 
 public:
@@ -115,21 +115,21 @@ public:
 /// of arguments the function takes), as well as if it is an operator.
 class PrototypeAST {
   std::string Name;
-  std::vector<std::string> Args;
+  std::vector<std::pair<Type*, std::string>> Params;
   bool IsOperator;
   unsigned Precedence; // Precedence if a binary op.
 
 public:
-  PrototypeAST(const std::string &Name, std::vector<std::string> Args,
+  PrototypeAST(const std::string &Name, std::vector<std::pair<Type*, std::string>> Params,
                bool IsOperator = false, unsigned Prec = 0)
-      : Name(Name), Args(std::move(Args)), IsOperator(IsOperator),
+      : Name(Name), Params(std::move(Params)), IsOperator(IsOperator),
         Precedence(Prec) {}
 
   Function *codegen();
   const std::string &getName() const { return Name; }
 
-  bool isUnaryOp() const { return IsOperator && Args.size() == 1; }
-  bool isBinaryOp() const { return IsOperator && Args.size() == 2; }
+  bool isUnaryOp() const { return IsOperator && Params.size() == 1; }
+  bool isBinaryOp() const { return IsOperator && Params.size() == 2; }
 
   char getOperatorName() const {
     assert(isUnaryOp() || isBinaryOp());
