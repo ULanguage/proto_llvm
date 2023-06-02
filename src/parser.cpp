@@ -170,6 +170,23 @@ std::unique_ptr<ExprAST> ParseForExpr() {
                                        std::move(Step), std::move(Body));
 }
 
+std::unique_ptr<VariableExprAST> ParseVariableDefinition() {
+  Type *type;
+  if (IdentifierStr == "double")
+    type = Type::getDoubleTy(*TheContext);
+  else
+   return nullptr;
+
+  getNextToken(); // eat typeId.
+  if (CurTok != tok_identifier)
+    return nullptr;
+
+  std::string Name = IdentifierStr;
+  getNextToken(); // eat identifier.
+
+  return std::make_unique<VariableExprAST>(type, Name);
+}
+
 /// varexpr ::= 'var' identifier ('=' expression)?
 //                    (',' identifier ('=' expression)?)* 'in' expression
 std::unique_ptr<ExprAST> ParseVarExpr() {
@@ -182,19 +199,9 @@ std::unique_ptr<ExprAST> ParseVarExpr() {
     return LogError("expected identifier after var");
 
   while (true) {
-    // TODO: Repeated code with prototype
-    Type *type;
-    if (IdentifierStr == "double")
-      type = Type::getDoubleTy(*TheContext);
-    else
-     return LogError("Unknown type in var");
-
-    getNextToken(); // eat typeId.
-    if (CurTok != tok_identifier)
-      return LogError("Expected type and name in var");
-
-    std::string Name = IdentifierStr;
-    getNextToken(); // eat identifier.
+    auto var = ParseVariableDefinition();
+    if (var == nullptr)
+      return LogError("invalid variable definition");
 
     // Read the optional initializer.
     std::unique_ptr<ExprAST> Init = nullptr;
@@ -206,8 +213,8 @@ std::unique_ptr<ExprAST> ParseVarExpr() {
         return nullptr;
     }
 
-    Vars.push_back(std::make_pair(std::make_unique<VariableExprAST>(type, Name), std::move(Init)));
-
+    Vars.push_back(std::make_pair(std::move(var), std::move(Init)));
+    
     // End of var list, exit loop.
     if (CurTok != ',')
       break;
@@ -367,19 +374,15 @@ std::unique_ptr<PrototypeAST> ParsePrototype() {
 
   if (CurTok != '(')
     return LogErrorP("Expected '(' in prototype");
+  getNextToken(); // eat '('.
 
   std::vector<std::unique_ptr<VariableExprAST>> Params;
-  while (getNextToken() == tok_identifier) {
-    Type *type;
-    if (IdentifierStr == "double") // TODO: Make it easier to add new types
-      type = Type::getDoubleTy(*TheContext);
-    else
-      return LogErrorP("Unknown type in prototye");
+  while (CurTok == tok_identifier) {
+    auto var = ParseVariableDefinition();
+    if (var == nullptr)
+      return LogErrorP("invalid variable definition");
 
-    if (getNextToken() != tok_identifier)
-      return LogErrorP("Expected type and name in prototye");
-
-    Params.push_back(std::make_unique<VariableExprAST>(type, IdentifierStr));
+    Params.push_back(std::move(var));
   }
   if (CurTok != ')')
     return LogErrorP("Expected ')' in prototype");
